@@ -189,7 +189,7 @@ namespace IHVNMedix.Controllers
                 return NotFound();
             }
 
-            // Create a ViewModel or DTO for vital signs entry
+            // Create a ViewModel from DTO for vital signs entry
             var vitalSignsViewModel = new VitalSignsDto
             {
                 EncounterId = encounter.Id,
@@ -218,7 +218,7 @@ namespace IHVNMedix.Controllers
                 // Save the vital signs data to the repository
                 await _vitalSignsRepository.AddVitalSignsAsync(vitalSigns);
 
-                return RedirectToAction("Index"); // Redirect to the encounter list or another appropriate page
+                return RedirectToAction("Index"); // Redirect to the encounter list
             }
 
             // If the model state is not valid, return to the entry form with validation errors
@@ -227,11 +227,10 @@ namespace IHVNMedix.Controllers
 
         public async Task<IActionResult> ViewVitalSigns(int encounterId)
         {
-            // Retrieve vital signs data for the specified encounterId
+            // I'm retriving vital signs data for the specified encounterId
             var vitalSigns = await _vitalSignsRepository.GetVitalSignsByEncounterIdAsync(encounterId);
 
-            // You can use a ViewModel or ViewBag to pass the vital signs data to the view
-
+            // Let me use a ViewModel to pass the vital signs data to the view, I'll try ViewBag  if viewModel fails
             return View(vitalSigns);
         }
 
@@ -262,44 +261,42 @@ namespace IHVNMedix.Controllers
         [HttpPost]
         public async Task<IActionResult> InputSymptoms(EncounterDto viewModel)
         {
-            // Assuming you have the access token available
+            // Enter a access token available when availble - Only for Production use I guess
             string accessToken = "YOUR_ACCESS_TOKEN_HERE";
 
-            // Fetch patient information from the EncounterDto
+            // I prefer to fetch patient information from the EncounterDto
             var patient = await _patientRepository.GetPatientByIdAsync(viewModel.PatientId);
 
-            // Fetch available symptoms from the repository
-            var symptoms = _symptomRepository.GetAllSymptomsAsync();
+            // Let me also fetch available symptoms from the repository
+            IEnumerable<Symptoms> symptoms = await _symptomRepository.GetAllSymptomsAsync(); 
 
-                       // Prepare a list of SelectListItem for symptoms
-            //var symptomItems = symptoms.Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name }).ToList();
+            // Prepare a list of SelectListItem for symptoms
+            var symptomItems = symptoms.Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Description }).ToList();
 
 
-            // Create an instance of EncounterSymptomsViewModel
+            // Creating instance of EncounterSymptomsViewModel fromEncounterDTO
             var encounterSymptomsViewModel = new EncounterDto
             {
                 Id = viewModel.Id,
-                //PatientName = $"{patient.FirstName} {patient.LastName}",
+                PatientName = $"{patient.FirstName} {patient.LastName}",
                 EncounterDate = viewModel.EncounterDate,
-                //Symptoms = symptomItems
+                Symptoms = viewModel.Symptoms,
+                SelectedSymptoms = viewModel.SelectedSymptoms
             };
 
             try
             {
                 var selectedSymptoms = viewModel.SelectedSymptoms; // List of selected symptom ids
 
-                // Call the LoadDiagnosisAsync method from your IMedicalDiagnosisService
+                // Call the LoadDiagnosisAsync method from IMedicalDiagnosisService
                 var diagnosisResults = await _medicalDiagnosisService.LoadDiagnosisAsync(
                     selectedSymptoms,
-                    patient.Gender, // Assuming patient.Gender is a valid string like "Male" or "Female"
+                    patient.Gender,
                     patient.DOB.Year, // Extract the year of birth from patient's Date of Birth
                     accessToken
                 );
-
-                // Assuming diagnosisResults is a list of diagnosis results
-                // You can process the results as needed, e.g., displaying them in the view
-
-                return View("DiagnosisResultsView", diagnosisResults); // Replace "DiagnosisResultsView" with your actual view name
+                ViewData["DiagnosisResults"] = diagnosisResults;
+                return View("DiagnosisResultsView", diagnosisResults); 
             }
             catch (Exception ex)
             {
@@ -307,6 +304,7 @@ namespace IHVNMedix.Controllers
                 ModelState.AddModelError("", "An error occurred while fetching diagnosis results. Please try again later.");
                 _logger.LogError(ex, "Error fetching diagnosis results.");
             }
+
 
             // If an error occurred or the diagnosis failed, return to the input symptoms view
             return View(encounterSymptomsViewModel);

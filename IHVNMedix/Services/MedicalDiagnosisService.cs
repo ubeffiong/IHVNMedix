@@ -39,7 +39,7 @@ namespace IHVNMedix.Services
             string password = _configuration["SandboxPassword"];
 
 
-            // Calculate HMAC
+            // Calculate HMAC - I'm not sure on how this can solve it 
             string uri = $"{authServiceUrl}/login";
             byte[] secretBytes = Encoding.UTF8.GetBytes(_secretKey);
             string computedHashString = "";
